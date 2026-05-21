@@ -654,7 +654,7 @@
 
     <div class="actions">
       <button class="btn-primary" onclick="showPreview()">📄 Preview Letter</button>
-      <button class="btn-secondary" onclick="showPreview(); setTimeout(()=>window.print(),300)">💾 Save as PDF</button>
+      <button class="btn-secondary" onclick="showPreview(); setTimeout(printLetter, 300)">💾 Save as PDF</button>
       <button class="btn-ghost" onclick="clearForm()">Clear Form</button>
     </div>
 
@@ -670,7 +670,7 @@
   <div class="preview-toolbar">
     <button class="btn-ghost" onclick="hidePreview()" style="background:white">← Back</button>
     <strong>Pre-Approval Letter</strong>
-    <button class="btn-primary" onclick="window.print()">💾 Save PDF</button>
+    <button class="btn-primary" onclick="printLetter()">💾 Save PDF</button>
   </div>
 
   <div class="letter-page" id="letterContent"></div>
@@ -960,6 +960,58 @@
   function hidePreview() {
     document.getElementById('formView').classList.remove('hidden');
     document.getElementById('previewView').classList.remove('active');
+  }
+
+  // Build a clean filename from borrower last names + date.
+  // Examples:
+  //   "Tara Armand" + "Alexander Baza" -> "Armand-Baza Pre-Approval 2026-05-21"
+  //   "Tara Armand" alone               -> "Armand Pre-Approval 2026-05-21"
+  //   no name                           -> "Pre-Approval 2026-05-21"
+  function buildPdfFilename() {
+    const lastName = (full) => {
+      const t = (full || '').trim();
+      if (!t) return '';
+      const parts = t.split(/\s+/);
+      return parts[parts.length - 1];
+    };
+    const b = lastName(document.getElementById('borrowerName').value);
+    const c = lastName(document.getElementById('coBorrowerName').value);
+
+    let names = '';
+    if (b && c && b.toLowerCase() !== c.toLowerCase()) {
+      names = `${b}-${c}`;
+    } else if (b) {
+      names = b;
+    } else if (c) {
+      names = c;
+    }
+
+    // Sanitize: remove characters that can break filenames on iOS/macOS/Windows
+    names = names.replace(/[\/\\:*?"<>|]/g, '').trim();
+
+    const dateIso = document.getElementById('letterDate').value || '';
+    const datePart = dateIso ? ` ${dateIso}` : '';
+
+    return names
+      ? `${names} Pre-Approval${datePart}`
+      : `Pre-Approval${datePart}`;
+  }
+
+  // Print with the borrower's name as the default PDF filename.
+  // Browsers use document.title as the suggested filename, so we swap it
+  // temporarily, trigger print, then restore.
+  function printLetter() {
+    const originalTitle = document.title;
+    document.title = buildPdfFilename();
+    // Restore after the print dialog closes. afterprint fires reliably on
+    // desktop and iOS Safari; the timeout is a safety net.
+    const restore = () => {
+      document.title = originalTitle;
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    setTimeout(restore, 60000); // safety net: restore after 60s no matter what
+    window.print();
   }
 
   function clearForm() {
