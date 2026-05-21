@@ -428,7 +428,9 @@
     padding: 2rem 1.5rem;
     color: white;
   }
+  /* Default: shown. .unlocked hides it. .visible forces it visible (used after relock). */
   #lockScreen.unlocked { display: none; }
+  #lockScreen.visible { display: flex; }
   .lock-logo {
     width: 90px;
     height: 90px;
@@ -1024,14 +1026,44 @@
   }
 
   // === LOCK SCREEN ===
-  // Once unlocked on a device, the page stays unlocked until storage is cleared.
+  // After successful unlock, the device stays unlocked for UNLOCK_HOURS hours
+  // of inactivity. Any interaction with the form (typing, clicking, etc.) resets
+  // the inactivity timer. Once unused for the full window, the next page load
+  // (or activity check) re-locks.
+  const UNLOCK_HOURS = 12;
+  const UNLOCK_MS = UNLOCK_HOURS * 60 * 60 * 1000;
+
   function isUnlocked() {
-    try { return localStorage.getItem('preapprovalUnlocked') === 'yes'; } catch(e) { return false; }
+    try {
+      const ts = parseInt(localStorage.getItem('preapprovalUnlockedAt') || '0', 10);
+      if (!ts) return false;
+      const elapsed = Date.now() - ts;
+      return elapsed < UNLOCK_MS;
+    } catch(e) {
+      return false;
+    }
+  }
+
+  function refreshUnlockTimestamp() {
+    try { localStorage.setItem('preapprovalUnlockedAt', Date.now().toString()); } catch(e){}
   }
 
   function unlock() {
-    try { localStorage.setItem('preapprovalUnlocked', 'yes'); } catch(e){}
+    refreshUnlockTimestamp();
+    document.getElementById('lockScreen').classList.remove('visible');
     document.getElementById('lockScreen').classList.add('unlocked');
+  }
+
+  function relock() {
+    try { localStorage.removeItem('preapprovalUnlockedAt'); } catch(e){}
+    const lock = document.getElementById('lockScreen');
+    lock.classList.remove('unlocked');
+    lock.classList.add('visible');
+    const input = document.getElementById('lockCode');
+    if (input) {
+      input.value = '';
+      setTimeout(() => input.focus(), 100);
+    }
   }
 
   function tryCode(code) {
@@ -1052,23 +1084,12 @@
   }
 
   function initLockScreen() {
-    if (isUnlocked()) {
-      document.getElementById('lockScreen').classList.add('unlocked');
-      return;
-    }
-    // Copy the embedded logo from the form header into the lock screen
-    const headerImg = document.querySelector('.header-logo img');
-    const lockImg = document.getElementById('lockLogoImg');
-    if (headerImg && lockImg) {
-      lockImg.src = headerImg.src;
-    }
+    // Always wire up the input listeners regardless of current state,
+    // since the screen may be shown later via relock().
     const input = document.getElementById('lockCode');
-    input.focus();
     input.addEventListener('input', (e) => {
-      // Strip non-digits
       const cleaned = e.target.value.replace(/\D/g, '');
       if (cleaned !== e.target.value) e.target.value = cleaned;
-      // Auto-submit when 4 digits entered
       if (cleaned.length === 4) {
         tryCode(cleaned);
       }
@@ -1079,6 +1100,53 @@
         tryCode(input.value);
       }
     });
+
+    // Copy the embedded logo from the form header into the lock screen
+    const headerImg = document.querySelector('.header-logo img');
+    const lockImg = document.getElementById('lockLogoImg');
+    if (headerImg && lockImg) {
+      lockImg.src = headerImg.src;
+    }
+
+    if (isUnlocked()) {
+      document.getElementById('lockScreen').classList.add('unlocked');
+      refreshUnlockTimestamp(); // bump the timestamp on this fresh visit
+    } else {
+      document.getElementById('lockScreen').classList.add('visible');
+      input.focus();
+    }
+
+    // Extend the session whenever the user is actively using the tool.
+    // Throttle to once every 30s so we're not hammering localStorage.
+    let lastRefresh = Date.now();
+    const onActivity = () => {
+      if (!isUnlocked()) return;
+      const now = Date.now();
+      if (now - lastRefresh > 30000) {
+        refreshUnlockTimestamp();
+        lastRefresh = now;
+      }
+    };
+    document.addEventListener('input', onActivity);
+    document.addEventListener('click', onActivity);
+    document.addEventListener('touchstart', onActivity, { passive: true });
+
+    // Check on tab focus / visibility change — if the user returns to the tab
+    // after a long time away, re-lock immediately rather than waiting for next load.
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && !isUnlocked()) {
+        relock();
+      }
+    });
+
+    // Periodic check while the tab is open (every 5 minutes) — relocks even
+    // if the page is left open and idle in the background.
+    setInterval(() => {
+      if (!document.hidden && !isUnlocked() &&
+          !document.getElementById('lockScreen').classList.contains('visible')) {
+        relock();
+      }
+    }, 5 * 60 * 1000);
   }
 
   document.addEventListener('DOMContentLoaded', () => {
