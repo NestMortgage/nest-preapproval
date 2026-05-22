@@ -952,14 +952,23 @@
     `;
   }
 
+  // We swap document.title when showing the letter preview so that the
+  // browser's "Save as PDF" feature uses the borrower-based filename.
+  // iOS Chrome reads the title BEFORE the print dialog opens, so swapping
+  // it at print time (like we do on desktop) is unreliable on mobile.
+  // Stash the original here so we can restore on hidePreview().
+  const ORIGINAL_TITLE = document.title;
+
   function showPreview() {
     renderLetter();
+    document.title = buildPdfFilename();
     document.getElementById('formView').classList.add('hidden');
     document.getElementById('previewView').classList.add('active');
     window.scrollTo(0, 0);
   }
 
   function hidePreview() {
+    document.title = ORIGINAL_TITLE;
     document.getElementById('formView').classList.remove('hidden');
     document.getElementById('previewView').classList.remove('active');
   }
@@ -999,20 +1008,9 @@
       : `Pre-Approval${datePart}`;
   }
 
-  // Print with the borrower's name as the default PDF filename.
-  // Browsers use document.title as the suggested filename, so we swap it
-  // temporarily, trigger print, then restore.
+  // Trigger the print/save-PDF flow. The title was already set in showPreview(),
+  // so the browser will use the borrower-based filename as the default.
   function printLetter() {
-    const originalTitle = document.title;
-    document.title = buildPdfFilename();
-    // Restore after the print dialog closes. afterprint fires reliably on
-    // desktop and iOS Safari; the timeout is a safety net.
-    const restore = () => {
-      document.title = originalTitle;
-      window.removeEventListener('afterprint', restore);
-    };
-    window.addEventListener('afterprint', restore);
-    setTimeout(restore, 60000); // safety net: restore after 60s no matter what
     window.print();
   }
 
