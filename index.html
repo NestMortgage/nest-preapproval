@@ -493,6 +493,7 @@
     text-align: center;
   }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
 
@@ -656,7 +657,7 @@
 
     <div class="actions">
       <button class="btn-primary" onclick="showPreview()">📄 Preview Letter</button>
-      <button class="btn-secondary" onclick="showPreview(); setTimeout(printLetter, 300)">💾 Save as PDF</button>
+      <button class="btn-secondary" onclick="generatePDF()">💾 Save as PDF</button>
       <button class="btn-ghost" onclick="clearForm()">Clear Form</button>
     </div>
 
@@ -672,7 +673,8 @@
   <div class="preview-toolbar">
     <button class="btn-ghost" onclick="hidePreview()" style="background:white">← Back</button>
     <strong>Pre-Approval Letter</strong>
-    <button class="btn-primary" onclick="printLetter()">💾 Save PDF</button>
+    <button class="btn-primary" onclick="generatePDF()">💾 Save PDF</button>
+    <button class="btn-ghost" onclick="window.print()" style="background:white">🖨 Print</button>
   </div>
 
   <div class="letter-page" id="letterContent"></div>
@@ -1021,6 +1023,53 @@
     localStorage.removeItem('preapprovalState');
     setDefaultDate();
     recalc();
+  }
+
+  function generatePDF() {
+    const borrower = document.getElementById('borrowerName').value.trim() || 'Letter';
+    const co = document.getElementById('coBorrowerName').value.trim();
+    const namePart = co ? (borrower + ' & ' + co) : borrower;
+    const safeName = namePart.replace(/[\\/:*?"<>|]/g, '').trim();
+    const filename = 'Pre-Approval - ' + safeName + '.pdf';
+
+    renderLetter();
+    if (!document.getElementById('formView').classList.contains('hidden')) {
+      document.getElementById('formView').classList.add('hidden');
+      document.getElementById('previewView').classList.add('active');
+      window.scrollTo(0, 0);
+    }
+
+    const letterEl = document.getElementById('letterContent');
+
+    const opt = {
+      margin:       [0.4, 0.4, 0.4, 0.4],
+      filename:     filename,
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        windowWidth: letterEl.scrollWidth
+      },
+      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
+      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+
+    const btns = document.querySelectorAll('button');
+    const originalLabels = [];
+    btns.forEach((b, i) => {
+      originalLabels[i] = b.innerHTML;
+      if (b.innerHTML.includes('Save')) b.innerHTML = 'Generating...';
+      b.disabled = true;
+    });
+
+    html2pdf().set(opt).from(letterEl).save().then(() => {
+      btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
+    }).catch((err) => {
+      btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
+      console.error('PDF generation failed:', err);
+      alert('Sorry — PDF generation failed. Please try again, or use the Print button as a fallback.');
+    });
   }
 
   // === LOCK SCREEN ===
