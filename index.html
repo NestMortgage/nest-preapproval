@@ -1049,10 +1049,25 @@
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        windowWidth: letterEl.scrollWidth
+        windowWidth: letterEl.scrollWidth,
+        onclone: function(clonedDoc) {
+          const letter = clonedDoc.getElementById('letterContent');
+          if (letter) {
+            // Usable space on US Letter at 0.4" margins = 10.2" tall, 96 px/inch
+            const maxHeightPx = 10.2 * 96;
+            const actualHeight = letter.scrollHeight;
+            if (actualHeight > maxHeightPx) {
+              const scale = maxHeightPx / actualHeight;
+              letter.style.transform = 'scale(' + scale + ')';
+              letter.style.transformOrigin = 'top left';
+              letter.style.width = (100 / scale) + '%';
+            }
+          }
+        }
       },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' },
-      pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
+      pagebreak:    { mode: ['avoid-all'] },
+      enableLinks:  false
     };
 
     const btns = document.querySelectorAll('button');
