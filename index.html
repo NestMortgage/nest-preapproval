@@ -1053,14 +1053,18 @@
         onclone: function(clonedDoc) {
           const letter = clonedDoc.getElementById('letterContent');
           if (letter) {
-            // Usable space on US Letter at 0.4" margins = 10.2" tall, 96 px/inch
+            // Always scale letter to fit exactly one US Letter page
+            // Usable space at 0.4" margins = 10.2" tall, 7.7" wide, 96 px/inch
             const maxHeightPx = 10.2 * 96;
             const actualHeight = letter.scrollHeight;
-            if (actualHeight > maxHeightPx) {
-              const scale = maxHeightPx / actualHeight;
+            // Only shrink (never enlarge), with a small safety margin
+            const targetHeightPx = maxHeightPx * 0.97;
+            if (actualHeight > targetHeightPx) {
+              const scale = targetHeightPx / actualHeight;
               letter.style.transform = 'scale(' + scale + ')';
               letter.style.transformOrigin = 'top left';
               letter.style.width = (100 / scale) + '%';
+              letter.style.height = actualHeight + 'px';
             }
           }
         }
