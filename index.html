@@ -1049,6 +1049,8 @@
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
+        height: 1056,           // match Letter page height at 96dpi (11" * 96)
+        windowHeight: 1056,
         onclone: function(clonedDoc) {
           const letter = clonedDoc.getElementById('letterContent');
           if (!letter) return;
