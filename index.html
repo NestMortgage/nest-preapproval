@@ -1094,7 +1094,13 @@
       b.disabled = true;
     });
 
-    html2pdf().set(opt).from(letterEl).save().then(() => {
+    const worker = html2pdf().set(opt).from(letterEl);
+    worker.toCanvas().then(() => {
+      const canvas = worker.prop('canvas');
+      console.log('[PDF-DIAG] canvas size:', canvas.width, 'x', canvas.height);
+      console.log('[PDF-DIAG] canvas height at scale 1:', canvas.height / 2);
+      return worker.save();
+    }).then(() => {
       btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
     }).catch((err) => {
       btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
