@@ -1058,12 +1058,20 @@
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
+        windowWidth: 1200,
         onclone: function(clonedDoc) {
           const letter = clonedDoc.getElementById('letterContent');
           if (!letter) return;
+          // Force desktop dimensions regardless of source viewport (fixes narrow iPhone PDF)
+          letter.style.width = '8.5in';
+          letter.style.maxWidth = '8.5in';
           letter.style.minHeight = '0';
-          letter.style.paddingTop = '0.4in';
-          letter.style.paddingBottom = '0.4in';
+          letter.style.padding = '0.5in 0.85in';
+          letter.style.margin = '0';
+          letter.style.boxSizing = 'border-box';
+          letter.style.fontSize = '11pt';
+          letter.style.lineHeight = '1.6';
+          letter.style.boxShadow = 'none';
         }
       });
 
