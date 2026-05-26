@@ -494,6 +494,8 @@
   }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
 
@@ -1025,7 +1027,7 @@
     recalc();
   }
 
-  function generatePDF() {
+  async function generatePDF() {
     const borrower = document.getElementById('borrowerName').value.trim() || 'Letter';
     const co = document.getElementById('coBorrowerName').value.trim();
     const namePart = co ? (borrower + ' & ' + co) : borrower;
@@ -1041,59 +1043,7 @@
 
     const letterEl = document.getElementById('letterContent');
 
-    const opt = {
-      margin:       [0.4, 0.4, 0.4, 0.4],
-      filename:     filename,
-      image:        { type: 'jpeg', quality: 0.98 },
-      html2canvas:  {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        onclone: function(clonedDoc) {
-          const letter = clonedDoc.getElementById('letterContent');
-          if (!letter) return;
-          // Reduce overall page padding to pull everything up
-          letter.style.minHeight = '0';
-          letter.style.paddingTop = '0.35in';
-          letter.style.paddingBottom = '0.35in';
-          // Tighten logo / letterhead
-          const letterhead = letter.querySelector('.letterhead');
-          if (letterhead) {
-            letterhead.style.paddingBottom = '0';
-            letterhead.style.marginBottom = '4px';
-          }
-          // Shrink the logo image specifically
-          const logoImg = letter.querySelector('.letterhead img, .letterhead-logo');
-          if (logoImg) {
-            logoImg.style.marginTop = '0';
-            logoImg.style.marginBottom = '4px';
-          }
-          // Tight gap between address and date
-          const date = letter.querySelector('.letter-date');
-          if (date) {
-            date.style.marginTop = '4px';
-            date.style.marginBottom = '8px';
-          }
-          // Tighter recipient block
-          const recipient = letter.querySelector('.letter-recipient');
-          if (recipient) {
-            recipient.style.marginBottom = '8px';
-          }
-          // Pull the footer divider/text up toward the email line
-          const footer = letter.querySelector('.letter-footer');
-          if (footer) {
-            footer.style.marginTop = '10px';
-            footer.style.paddingTop = '6px';
-          }
-          console.log('PDF onclone done. Final height:', letter.scrollHeight + 'px',
-                      'target: 979px');
-        }
-      },
-      jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
-      pagebreak:    { mode: ['avoid-all'], avoid: '.letter-footer' },
-      enableLinks:  false
-    };
-
+    // Disable buttons during generation
     const btns = document.querySelectorAll('button');
     const originalLabels = [];
     btns.forEach((b, i) => {
@@ -1102,13 +1052,61 @@
       b.disabled = true;
     });
 
-    html2pdf().set(opt).from(letterEl).save().then(() => {
-      btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
-    }).catch((err) => {
-      btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
+    try {
+      // Step 1: Render the letter to a canvas using html2canvas directly
+      const canvas = await html2canvas(letterEl, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+        onclone: function(clonedDoc) {
+          const letter = clonedDoc.getElementById('letterContent');
+          if (!letter) return;
+          letter.style.minHeight = '0';
+          letter.style.paddingTop = '0.4in';
+          letter.style.paddingBottom = '0.4in';
+        }
+      });
+
+      // Step 2: Compute scale to fit the canvas on one letter page with 0.4in margins
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: 'in', format: 'letter', orientation: 'portrait', compress: true });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();    // 8.5
+      const pageHeight = pdf.internal.pageSize.getHeight();  // 11
+      const margin = 0.4;
+      const usableWidth = pageWidth - (margin * 2);   // 7.7
+      const usableHeight = pageHeight - (margin * 2); // 10.2
+
+      // Canvas dimensions in pixels
+      const canvasWidthPx = canvas.width;
+      const canvasHeightPx = canvas.height;
+
+      // Compute image dimensions in inches: fit width, scale height proportionally
+      let imgWidth = usableWidth;
+      let imgHeight = (canvasHeightPx / canvasWidthPx) * imgWidth;
+
+      // If proportional height exceeds usable height, scale down to fit height instead
+      if (imgHeight > usableHeight) {
+        imgHeight = usableHeight;
+        imgWidth = (canvasWidthPx / canvasHeightPx) * imgHeight;
+      }
+
+      console.log('[PDF] canvas:', canvasWidthPx, 'x', canvasHeightPx,
+                  '| placed at:', imgWidth.toFixed(2), 'x', imgHeight.toFixed(2), 'in');
+
+      // Step 3: Add the canvas as a single image on a single page
+      const imgData = canvas.toDataURL('image/jpeg', 0.98);
+      // Center horizontally; place at top margin vertically
+      const xOffset = margin + (usableWidth - imgWidth) / 2;
+      pdf.addImage(imgData, 'JPEG', xOffset, margin, imgWidth, imgHeight, undefined, 'FAST');
+
+      pdf.save(filename);
+    } catch (err) {
       console.error('PDF generation failed:', err);
       alert('Sorry — PDF generation failed. Please try again, or use the Print button as a fallback.');
-    });
+    } finally {
+      btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
+    }
   }
 
   // === LOCK SCREEN ===
