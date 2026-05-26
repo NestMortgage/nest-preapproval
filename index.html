@@ -1053,16 +1053,32 @@
           const letter = clonedDoc.getElementById('letterContent');
           if (!letter) return;
 
-          // Remove min-height floor and reduce internal padding for PDF rendering.
-          // .letter-page CSS uses 72px top/bottom padding which fits nicely on
-          // screen but adds 1.5 inches of whitespace in the PDF. Trim to 16px
-          // top and bottom (saves 112px total) to fit content within 979px.
+          // Strip min-height and most padding
           letter.style.minHeight = '0';
-          letter.style.paddingTop = '16px';
-          letter.style.paddingBottom = '16px';
+          letter.style.paddingTop = '0px';
+          letter.style.paddingBottom = '0px';
+
+          // Tighten vertical gaps inside the letter
+          const letterhead = letter.querySelector('.letterhead');
+          if (letterhead) {
+            letterhead.style.marginBottom = '8px';
+          }
+          const date = letter.querySelector('.letter-date');
+          if (date) {
+            date.style.marginTop = '8px';
+            date.style.marginBottom = '12px';
+          }
+          const recipient = letter.querySelector('.letter-recipient');
+          if (recipient) {
+            recipient.style.marginBottom = '12px';
+          }
+          const footer = letter.querySelector('.letter-footer');
+          if (footer) {
+            footer.style.marginTop = '16px';
+          }
 
           console.log('PDF onclone done. Final height:', letter.scrollHeight + 'px',
-                      'target: 979px (leave ~50px buffer)');
+                      'target: 979px');
         }
       },
       jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
