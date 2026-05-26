@@ -1054,6 +1054,9 @@
           const letter = clonedDoc.getElementById('letterContent');
           if (!letter) return;
 
+          // Remove min-height: 11in so scrollHeight reflects actual content
+          letter.style.minHeight = '0';
+
           // Target: 10.2" usable page height × 96px/inch = 979px
           const maxHeightPx = 979;
 
