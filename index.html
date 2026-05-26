@@ -1054,77 +1054,24 @@
           const letter = clonedDoc.getElementById('letterContent');
           if (!letter) return;
 
-          // Remove min-height: 11in so scrollHeight reflects actual content
+          // Remove the min-height floor and reduce internal padding.
+          // The .letter-page CSS uses 72px top/bottom padding which is great
+          // for on-screen preview but eats 1.5 inches in the PDF.
           letter.style.minHeight = '0';
+          letter.style.paddingTop = '36px';
+          letter.style.paddingBottom = '36px';
 
-          // ===== TEMPORARY DEBUG BLOCK — remove after diagnosis =====
-          console.group('PDF DEBUG');
-          try {
-            const cs = clonedDoc.defaultView.getComputedStyle(letter);
-            console.log('ROOT computed style:', {
-              minHeight: cs.minHeight, height: cs.height,
-              paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom,
-              marginTop: cs.marginTop, marginBottom: cs.marginBottom,
-              boxSizing: cs.boxSizing
-            });
-            console.log('ROOT scrollHeight:', letter.scrollHeight, 'offsetHeight:', letter.offsetHeight);
-            console.log('ROOT outerHTML (first 2000 chars):', letter.outerHTML.substring(0, 2000));
-            console.log('--- DIRECT CHILDREN ---');
-            Array.from(letter.children).forEach((child, i) => {
-              const ccs = clonedDoc.defaultView.getComputedStyle(child);
-              console.log('Child ' + i + ' <' + child.tagName + '> .' + child.className, {
-                offsetHeight: child.offsetHeight,
-                minHeight: ccs.minHeight, height: ccs.height,
-                marginTop: ccs.marginTop, marginBottom: ccs.marginBottom,
-                paddingTop: ccs.paddingTop, paddingBottom: ccs.paddingBottom
-              });
-            });
-          } catch(e) { console.error('Debug error:', e); }
-          console.groupEnd();
-          // ===== END DEBUG BLOCK =====
-
-          // Target: 10.2" usable page height × 96px/inch = 979px
+          // Safety net: if content is STILL too tall after padding reduction,
+          // apply transform scaling as a fallback.
           const maxHeightPx = 979;
-
-          // Iteratively shrink font-size on all children until it fits.
-          // Start at 100% and decrement by 1% until content fits or we hit floor.
-          let scalePercent = 100;
-          const minScale = 75; // never shrink below 75%
-
-          // Apply scale by reducing font-size on the root letter element
-          // (since rem/em cascade) and explicitly on children that use px.
-          const applyScale = (pct) => {
-            const factor = pct / 100;
-            letter.style.fontSize = (16 * factor) + 'px';
-            // Also tighten margins/padding proportionally on direct children
-            const blocks = letter.querySelectorAll('p, div, h1, h2, h3, .letter-footer, .signature, .recipient');
-            blocks.forEach(el => {
-              // Store original if not stored
-              if (!el.dataset.origMargin) {
-                const cs = clonedDoc.defaultView.getComputedStyle(el);
-                el.dataset.origMargin = cs.marginTop + '|' + cs.marginBottom;
-                el.dataset.origPadding = cs.paddingTop + '|' + cs.paddingBottom;
-              }
-              const [mt, mb] = el.dataset.origMargin.split('|');
-              const [pt, pb] = el.dataset.origPadding.split('|');
-              el.style.marginTop = (parseFloat(mt) * factor) + 'px';
-              el.style.marginBottom = (parseFloat(mb) * factor) + 'px';
-              el.style.paddingTop = (parseFloat(pt) * factor) + 'px';
-              el.style.paddingBottom = (parseFloat(pb) * factor) + 'px';
-            });
-          };
-
-          // Measure and shrink loop
-          let attempts = 0;
-          while (letter.scrollHeight > maxHeightPx && scalePercent > minScale && attempts < 30) {
-            scalePercent -= 1;
-            applyScale(scalePercent);
-            attempts++;
+          if (letter.scrollHeight > maxHeightPx) {
+            const scale = (maxHeightPx / letter.scrollHeight) * 0.98;
+            letter.style.transform = 'scale(' + scale + ')';
+            letter.style.transformOrigin = 'top left';
+            letter.style.width = (100 / scale) + '%';
           }
 
-          // Log for debugging (visible in browser console during generation)
-          console.log('PDF scale applied:', scalePercent + '%',
-                      'final height:', letter.scrollHeight + 'px',
+          console.log('PDF onclone done. Final height:', letter.scrollHeight + 'px',
                       'target:', maxHeightPx + 'px');
         }
       },
