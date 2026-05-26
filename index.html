@@ -1054,25 +1054,16 @@
           const letter = clonedDoc.getElementById('letterContent');
           if (!letter) return;
 
-          // Remove the min-height floor and reduce internal padding.
-          // The .letter-page CSS uses 72px top/bottom padding which is great
-          // for on-screen preview but eats 1.5 inches in the PDF.
+          // Remove min-height floor and reduce internal padding for PDF rendering.
+          // .letter-page CSS uses 72px top/bottom padding which fits nicely on
+          // screen but adds 1.5 inches of whitespace in the PDF. Trim to 16px
+          // top and bottom (saves 112px total) to fit content within 979px.
           letter.style.minHeight = '0';
-          letter.style.paddingTop = '36px';
-          letter.style.paddingBottom = '36px';
-
-          // Safety net: if content is STILL too tall after padding reduction,
-          // apply transform scaling as a fallback.
-          const maxHeightPx = 979;
-          if (letter.scrollHeight > maxHeightPx) {
-            const scale = (maxHeightPx / letter.scrollHeight) * 0.98;
-            letter.style.transform = 'scale(' + scale + ')';
-            letter.style.transformOrigin = 'top left';
-            letter.style.width = (100 / scale) + '%';
-          }
+          letter.style.paddingTop = '16px';
+          letter.style.paddingBottom = '16px';
 
           console.log('PDF onclone done. Final height:', letter.scrollHeight + 'px',
-                      'target:', maxHeightPx + 'px');
+                      'target: 979px (leave ~50px buffer)');
         }
       },
       jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait', compress: true },
