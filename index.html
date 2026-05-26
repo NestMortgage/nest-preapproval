@@ -1095,14 +1095,25 @@
     });
 
     const worker = html2pdf().set(opt).from(letterEl);
-    worker.toCanvas().then(() => {
-      const canvas = worker.prop('canvas');
-      console.log('[PDF-DIAG] canvas size:', canvas.width, 'x', canvas.height);
-      console.log('[PDF-DIAG] canvas height at scale 1:', canvas.height / 2);
+    worker.toCanvas().then(function() {
+      const canvas = worker.get('canvas');
+      if (canvas) {
+        console.log('[PDF-DIAG] canvas size:', canvas.width, 'x', canvas.height);
+        console.log('[PDF-DIAG] canvas height at scale 1:', canvas.height / 2);
+      } else {
+        console.log('[PDF-DIAG] canvas not retrievable via get()');
+      }
+      return worker.toPdf();
+    }).then(function() {
+      const pdf = worker.get('pdf');
+      if (pdf) {
+        console.log('[PDF-DIAG] pdf pages:', pdf.internal.getNumberOfPages());
+        console.log('[PDF-DIAG] pdf page size (in pt):', pdf.internal.pageSize.getWidth(), 'x', pdf.internal.pageSize.getHeight());
+      }
       return worker.save();
-    }).then(() => {
+    }).then(function() {
       btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
-    }).catch((err) => {
+    }).catch(function(err) {
       btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
       console.error('PDF generation failed:', err);
       alert('Sorry — PDF generation failed. Please try again, or use the Print button as a fallback.');
