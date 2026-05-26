@@ -1061,20 +1061,20 @@
           // Tighten vertical gaps inside the letter
           const letterhead = letter.querySelector('.letterhead');
           if (letterhead) {
-            letterhead.style.marginBottom = '8px';
+            letterhead.style.marginBottom = '4px';
           }
           const date = letter.querySelector('.letter-date');
           if (date) {
-            date.style.marginTop = '8px';
-            date.style.marginBottom = '12px';
+            date.style.marginTop = '2px';
+            date.style.marginBottom = '6px';
           }
           const recipient = letter.querySelector('.letter-recipient');
           if (recipient) {
-            recipient.style.marginBottom = '12px';
+            recipient.style.marginBottom = '6px';
           }
           const footer = letter.querySelector('.letter-footer');
           if (footer) {
-            footer.style.marginTop = '16px';
+            footer.style.marginTop = '8px';
           }
 
           console.log('PDF onclone done. Final height:', letter.scrollHeight + 'px',
@@ -1094,26 +1094,9 @@
       b.disabled = true;
     });
 
-    const worker = html2pdf().set(opt).from(letterEl);
-    worker.toCanvas().then(function() {
-      const canvas = worker.get('canvas');
-      if (canvas) {
-        console.log('[PDF-DIAG] canvas size:', canvas.width, 'x', canvas.height);
-        console.log('[PDF-DIAG] canvas height at scale 1:', canvas.height / 2);
-      } else {
-        console.log('[PDF-DIAG] canvas not retrievable via get()');
-      }
-      return worker.toPdf();
-    }).then(function() {
-      const pdf = worker.get('pdf');
-      if (pdf) {
-        console.log('[PDF-DIAG] pdf pages:', pdf.internal.getNumberOfPages());
-        console.log('[PDF-DIAG] pdf page size (in pt):', pdf.internal.pageSize.getWidth(), 'x', pdf.internal.pageSize.getHeight());
-      }
-      return worker.save();
-    }).then(function() {
+    html2pdf().set(opt).from(letterEl).save().then(() => {
       btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
-    }).catch(function(err) {
+    }).catch((err) => {
       btns.forEach((b, i) => { b.innerHTML = originalLabels[i]; b.disabled = false; });
       console.error('PDF generation failed:', err);
       alert('Sorry — PDF generation failed. Please try again, or use the Print button as a fallback.');
