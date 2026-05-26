@@ -1057,6 +1057,32 @@
           // Remove min-height: 11in so scrollHeight reflects actual content
           letter.style.minHeight = '0';
 
+          // ===== TEMPORARY DEBUG BLOCK — remove after diagnosis =====
+          console.group('PDF DEBUG');
+          try {
+            const cs = clonedDoc.defaultView.getComputedStyle(letter);
+            console.log('ROOT computed style:', {
+              minHeight: cs.minHeight, height: cs.height,
+              paddingTop: cs.paddingTop, paddingBottom: cs.paddingBottom,
+              marginTop: cs.marginTop, marginBottom: cs.marginBottom,
+              boxSizing: cs.boxSizing
+            });
+            console.log('ROOT scrollHeight:', letter.scrollHeight, 'offsetHeight:', letter.offsetHeight);
+            console.log('ROOT outerHTML (first 2000 chars):', letter.outerHTML.substring(0, 2000));
+            console.log('--- DIRECT CHILDREN ---');
+            Array.from(letter.children).forEach((child, i) => {
+              const ccs = clonedDoc.defaultView.getComputedStyle(child);
+              console.log('Child ' + i + ' <' + child.tagName + '> .' + child.className, {
+                offsetHeight: child.offsetHeight,
+                minHeight: ccs.minHeight, height: ccs.height,
+                marginTop: ccs.marginTop, marginBottom: ccs.marginBottom,
+                paddingTop: ccs.paddingTop, paddingBottom: ccs.paddingBottom
+              });
+            });
+          } catch(e) { console.error('Debug error:', e); }
+          console.groupEnd();
+          // ===== END DEBUG BLOCK =====
+
           // Target: 10.2" usable page height × 96px/inch = 979px
           const maxHeightPx = 979;
 
