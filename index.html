@@ -1052,31 +1052,39 @@
         onclone: function(clonedDoc) {
           const letter = clonedDoc.getElementById('letterContent');
           if (!letter) return;
-
-          // Strip min-height and most padding
+          // Reduce overall page padding to pull everything up
           letter.style.minHeight = '0';
-          letter.style.paddingTop = '0px';
-          letter.style.paddingBottom = '0px';
-
-          // Tighten vertical gaps inside the letter
+          letter.style.paddingTop = '0.35in';
+          letter.style.paddingBottom = '0.35in';
+          // Tighten logo / letterhead
           const letterhead = letter.querySelector('.letterhead');
           if (letterhead) {
+            letterhead.style.paddingBottom = '0';
             letterhead.style.marginBottom = '4px';
           }
+          // Shrink the logo image specifically
+          const logoImg = letter.querySelector('.letterhead img, .letterhead-logo');
+          if (logoImg) {
+            logoImg.style.marginTop = '0';
+            logoImg.style.marginBottom = '4px';
+          }
+          // Tight gap between address and date
           const date = letter.querySelector('.letter-date');
           if (date) {
-            date.style.marginTop = '2px';
-            date.style.marginBottom = '6px';
+            date.style.marginTop = '4px';
+            date.style.marginBottom = '8px';
           }
+          // Tighter recipient block
           const recipient = letter.querySelector('.letter-recipient');
           if (recipient) {
-            recipient.style.marginBottom = '6px';
+            recipient.style.marginBottom = '8px';
           }
+          // Pull the footer divider/text up toward the email line
           const footer = letter.querySelector('.letter-footer');
           if (footer) {
-            footer.style.marginTop = '8px';
+            footer.style.marginTop = '10px';
+            footer.style.paddingTop = '6px';
           }
-
           console.log('PDF onclone done. Final height:', letter.scrollHeight + 'px',
                       'target: 979px');
         }
